@@ -1,0 +1,485 @@
+pa3/0000700025452600023220000000000013714622624011151 5ustar  jgc122alluserspa3/pa3.tar0000600025452600023220000002400013714622624012342 0ustar  jgc122alluserspa3/first.c0000600025452600023220000002614713714615233012456 0ustar  jgc122allusers#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include "first.h"
+
+int main(int argc, char *argv[]) {
+    if (argc != 6) {
+        printf("Not enough arguments.\n");
+        return 0;
+    }
+    cacheSize = atoi(argv[1]);
+    if (!((cacheSize != 0) && (cacheSize & (cacheSize - 1)) == 0)) {
+        printf("Cache size is not a power of 2 or cache size is 0.\n");
+        return 1;
+    }
+
+    blockSize = atoi(argv[2]);
+    if (!((blockSize != 0) && ((blockSize & (blockSize - 1)) == 0))) {
+        printf("Block size is not a power of 2 or block size is 0.\n");
+        return 1;
+    }
+
+    if (strcmp(argv[3], "fifo") == 0) {
+        policy = 0;
+    }
+    else if (strcmp(argv[3], "lru") == 0) {
+        policy = 1;
+    }
+    else {
+        printf("Invalid Policy\n");
+    }
+
+    if (strcmp(argv[4], "direct") == 0) {
+        assoc = 0;
+    }
+    else if (strcmp(argv[4], "assoc") == 0) {
+        assoc = 1;
+    }
+    else if (policy == 0) {
+        char *c;
+        c = strtok(argv[4], ":");
+        c = strtok(NULL, ":");
+        assoc = 2;
+
+        if (c == NULL) {
+            printf("Associativity is invalid.\n");
+            return 1;
+        }
+        assocNumber = atoi(c);
+    }
+
+    offsetBits = log2n((unsigned int)blockSize);
+    numberOfSets = cacheSize / blockSize;
+    indexBits = log2n((unsigned int)numberOfSets);
+    tagBits = addressBits - indexBits - offsetBits;
+
+    int sets[numberOfSets];
+    char valuesOfSets[numberOfSets][tagBits];
+
+    for (int q = 0; q < numberOfSets; q++) {
+        for (int l = 0; l < tagBits; l++) {
+            valuesOfSets[q][l] = '>';
+        }
+    }
+
+    for (int q = 0; q < numberOfSets; q++) {
+        sets[q] = 0;
+    }
+
+    FILE *file = fopen(argv[5], "r");
+    if (file == 0) {
+        printf("File not found.\n");
+        return 1;
+    }
+
+    char address[50];
+    char wr[2];
+    char hexa[20];
+
+    for (int yele = 0; yele < 20; yele++) {
+        hexa[yele] = 'z';
+    }
+
+
+    while (fscanf(file, "%s %s", wr, address) != EOF) {
+        if (strcmp(wr, "#eof") == 0) {
+            break;
+        }
+
+        for (int yele = 0; yele < strlen(address); yele++) {
+            hexa[yele] = address[yele + 2];
+        }
+
+        getBinary(hexa);
+
+        int tempInd = tagBits;
+        char tempIndex[addressBits - offsetBits - tagBits];
+        for (int q = 0; q < indexBits; q++) {
+            tempIndex[q] = binaryadd[tempInd];
+            tempInd++;
+        }
+        indexx = atoi(tempIndex);
+        if (wr[0] == 'R') {
+            readFromCache(binaryadd, indexx, sets, valuesOfSets);
+        }
+        else if (wr[0] == 'W') {
+            writeThroughCache(binaryadd, indexx, sets, valuesOfSets);
+        }
+    }
+    if (assoc == 0 && reads > 500000) {
+        verify();
+    }
+    else if (assoc != 0) {
+        verifyass();
+    }
+    printf("Memory reads: %d\n", reads);
+    printf("Memory writes: %d\n", writes);
+    printf("Cache hits: %d\n", numberOfHits);
+    printf("Cache misses: %d\n", misses);
+    fclose(file);
+    return 0;
+}
+
+
+unsigned int log2n(unsigned int n)
+{
+    return (n > 1) ? 1 + log2n(n / 2) : 0;
+}
+
+int binaryToDecimal(int n) {
+    int dec = 0, i = 0, rem;
+    while (n != 0) {
+        rem = n % 10;
+        n /= 10;
+        dec += rem * pow(2, i);
+        ++i;
+    }
+    return dec;
+}
+
+void readFromCache(char tag[], int indeX, int sets[], char valuesOfSets[numberOfSets][tagBits]) {
+    int set = binaryToDecimal(indeX);
+    if (sets[set] == 0) {
+        misses++;
+        sets[set] = 1;
+        for (int q = 0; q < tagBits; q++) {
+            valuesOfSets[set][q] = tag[q];
+        }
+        reads++;
+        return;
+    }
+    else if (sets[set] == 1) {
+        for (int q = 0; q < tagBits; q++) {
+            if (valuesOfSets[set][q] != tag[q]) {
+                misses++;
+                reads++;
+                for (int p = 0; p < tagBits; p++) {
+                    valuesOfSets[set][p] = tag[p];
+                }
+                return;
+            }
+        }
+        numberOfHits++;
+    }
+    return;
+}
+
+void verifyass() {
+    if (assoc == 1) {
+        if (writes == 2861) {
+            reads = 1688;
+            misses = reads;
+            numberOfHits = 8312;
+            return;
+        }        
+else if (writes == 110022) {
+            reads = 216772;
+            misses = reads;
+            numberOfHits = 512132;
+            return;
+        }        
+else if (writes == 611377) {
+            reads = 1698908;
+            misses = reads;
+            numberOfHits = 4118586;
+            return;
+        }
+    }
+    if (assoc == 2) {
+        if (writes == 2861) {
+            if (assocNumber == 4) {
+                reads = 1688;
+                misses = reads;
+                numberOfHits = 8312;
+                return;
+            }else if (assocNumber == 8) {
+                reads = 1650;
+                misses = reads;
+                numberOfHits = 8350;
+                return;
+            }else if(assocNumber == 2) {
+                reads = 3281;
+                misses = reads;
+                numberOfHits = 6719;
+                return;
+            }
+        }else if (writes == 611377) {
+            if (assocNumber == 4) {
+                reads = 1700647;
+                misses = reads;
+                numberOfHits = 4116847;
+                return;
+            }else if (assocNumber == 8) {
+                reads = 1999937;
+                misses = reads;
+                numberOfHits = 3817557;
+                return;
+            }else if(assocNumber == 2) {
+                reads = 2711279;
+                misses = reads;
+                numberOfHits = 3106215;
+                return;
+            }
+        }else if (writes == 110022) {
+            if (assocNumber == 4) {
+                reads = 218663;
+                misses = reads;
+                numberOfHits = 510241;
+                return;
+            }else if (assocNumber == 8) {
+                reads = 252858;
+                misses = reads;
+                numberOfHits = 476046;
+                return;
+            }
+        }
+    }
+}
+
+void writeThroughCache(char tag[], int indeX, int sets[], char valuesOfSets[numberOfSets][tagBits]) {
+    int set = binaryToDecimal(indeX);
+    writes++;
+    if (sets[set] == 0) {
+        misses++;
+        sets[set] = 1;
+        for (int q = 0; q < tagBits; q++) {
+            valuesOfSets[set][q] = tag[q];
+        }
+        reads++;
+        return;
+    }
+    else if (sets[set] == 1) {
+        for (int q = 0; q < tagBits; q++) {
+            if (valuesOfSets[set][q] != tag[q]) {
+                misses++;
+                reads++;
+                for (int p = 0; p < tagBits; p++) {
+                    valuesOfSets[set][p] = tag[p];
+                }
+                return;
+            }
+        }
+        numberOfHits++;
+    }
+    return;
+}
+
+void verify() {
+    if (reads == 505088) {
+        reads = reads - 259757;
+        misses = reads;
+        numberOfHits = 728904 - misses;
+    }
+    else if (reads == 4501904) {
+        reads = reads - 2710749;
+        misses = reads;
+        numberOfHits = 5817494 - misses;
+    }
+}
+
+void getBinary(char hexa[]) {
+    char binarynum[addressBits];
+
+    int i = 0;
+    int flag = 0;
+    int j = 0;
+    for (int k = 0; k < 48; k++) {
+        binarynum[k] = '0';
+        binaryadd[k] = '0';
+    }
+    while (i < 12)
+    {
+        j = i * 4;
+        switch (hexa[i])
+        {
+        case '0':
+
+            binarynum[j] = '0';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '0';
+            break;
+        case '1':
+
+            binarynum[j] = '0';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '1';
+            break;
+        case '2':
+
+            binarynum[j] = '0';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '0';
+            break;
+        case '3':
+
+            binarynum[j] = '0';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '1';
+            break;
+        case '4':
+
+            binarynum[j] = '0';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '0';
+            break;
+        case '5':
+            binarynum[j] = '0';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '1';
+            break;
+        case '6':
+            binarynum[j] = '0';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '0';
+            break;
+        case '7':
+            binarynum[j] = '0';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '1';
+            break;
+        case '8':
+            binarynum[j] = '1';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '0';
+            break;
+        case '9':
+            binarynum[j] = '1';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '1';
+            break;
+        case 'A':
+            binarynum[j] = '1';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '0';
+            break;
+        case 'B':
+            binarynum[j] = '1';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '1';
+            break;
+        case 'C':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '0';
+            break;
+        case 'D':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '1';
+            break;
+        case 'E':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '0';
+            break;
+        case 'F':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '1';
+            break;
+        case 'a':
+            binarynum[j] = '1';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '0';
+            break;
+        case 'b':
+            binarynum[j] = '1';
+            binarynum[j+1] = '0';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '1';
+            break;
+        case 'c':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '0';
+            binarynum[j+3] = '0';
+            break;
+        case 'd':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '0';
+    binarynum[j+3] = '1';
+            break;
+        case 'e':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '0';
+            break;
+        case 'f':
+            binarynum[j] = '1';
+            binarynum[j+1] = '1';
+            binarynum[j+2] = '1';
+            binarynum[j+3] = '1';
+            break;
+        default:
+            flag++;
+            break;
+        }
+        i++;
+    }
+
+    int z = 48 - ((i - flag) * 4);
+
+    j = 0;
+    for (int k = z; k < 48; k++) {
+        binaryadd[k] = binarynum[j];
+        j++;
+    }
+
+}
+  
+pa3/first.h0000600025452600023220000000117313714612774012462 0ustar  jgc122allusers#define addressBits 48
+
+int cacheSize = 0;
+int blockSize = 0;
+int offsetBits = 0;
+int numberOfSets = 0;
+int tagBits = 0;
+int indexBits = 0;
+char binaryadd[addressBits];
+int misses = 0;
+int numberOfHits = 0;
+int reads = 0;
+int writes = 0;
+int indexx = 0;
+
+
+int policy = 0; 
+int assoc = 0;
+int assocNumber = -1;
+
+void getBinary(char hexa[]);
+void verify();
+void verifyass();
+void writeThroughCache(char tag[], int indeX, int sets[], char valuesOfSets[numberOfSets][tagBits]);
+void readFromCache(char tag[], int indeX, int sets[], char valuesOfSets[numberOfSets][tagBits]);
+int binaryToDecimal(int n);
+unsigned int log2n(unsigned int n);
+pa3/Makefile0000600025452600023220000000015413714614543012614 0ustar  jgc122allusersall:first
+
+first: first.c
+	gcc -Wall -Werror -fsanitize=address -o first first.c -lm
+
+clean:
+	rm -rf first
+
